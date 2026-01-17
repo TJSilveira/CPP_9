@@ -6,7 +6,7 @@
 /*   By: tsilveir <tsilveir@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 17:29:14 by tsilveir          #+#    #+#             */
-/*   Updated: 2026/01/17 16:43:35 by tsilveir         ###   ########.fr       */
+/*   Updated: 2026/01/18 00:40:03 by tsilveir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
 
 	BitcoinExchange exchange;
 
+	exchange.print_all();
 
-
+	exchange.process_input_file(argv[1]);
 }

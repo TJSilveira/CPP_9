@@ -171,6 +171,7 @@ BitcoinExchange::BitcoinExchange(void)
 	std::string temp;
 	std::string date;
 	std::string float_num;
+	float num;
 
 	std::getline(in_file, temp);
 	if(temp.compare("date,exchange_rate") != 0)
@@ -183,9 +184,10 @@ BitcoinExchange::BitcoinExchange(void)
 		else
 		{
 			date = temp.substr(0, temp.find(','));
-			float_num = temp.substr(temp.find(','), temp.size() - temp.find(','));
+			float_num = temp.substr(temp.find(',')+1, temp.size() - temp.find(',')-1);
 		}
-		this->database.insert(std::make_pair(Date(date), static_cast<float>(atof(float_num.c_str()))));
+		num = static_cast<float>(atof(float_num.c_str()));
+		this->database.insert(std::make_pair(Date(date), num));
 	}
 	return;
 }
@@ -206,33 +208,100 @@ BitcoinExchange::~BitcoinExchange(void)
 
 float	BitcoinExchange::get_db_value(const Date& target)
 {
-	if (this->database.upper_bound(target) == this->database.begin())
+	std::map<Date, float>::iterator it = this->database.upper_bound(target);
+	if (it == this->database.begin())
 		throw BitcoinExchange::DateBeforeBitcoinInception();
 	
-	return (this->database.upper_bound(target)->second);
+	--it;
+	return (it->second);
 }
 
-float	BitcoinExchange::print_final_value(const std::string line)
+void	BitcoinExchange::process_input_file(char *filename)
 {
+	std::ifstream	in_file;
 
-	try
+	in_file.open(filename, std::ios::in | std::ios::binary);
+	if (in_file.fail())
 	{
-		/* code */
+		std::cerr << "Error: could not open file." << std::endl;
+		return;
 	}
-	catch(const std::exception& e)
+
+	std::string temp;
+	std::string date;
+	std::string float_num;
+
+	std::getline(in_file, temp);
+	if(temp.compare("date | value") != 0)
 	{
-		std::cerr << e.what() << '\n';
+		std::cerr << "Error: No header in file" << std::endl;
+		return;	
 	}
-	
+
+	while (std::getline(in_file, temp))
+	{
+		if (temp.size() >= 10)
+		{
+			try
+			{
+				Date date(temp.substr(0,10));
+			}
+			catch(const Date::InvalidDate& e)
+			{
+				std::cerr << "Error: bad input => " << temp.substr(0,10)<<'\n';
+				continue;
+			}
+		}
+		
+		if (temp.find('|') == std::string::npos)
+		{
+			std::cerr << "Error: Line not formatted correctly" << std::endl;
+			continue;
+		}
+		else
+		{
+			date = temp.substr(0, temp.find('|') - 1);
+			float_num = temp.substr(temp.find('|') + 2, temp.size() - temp.find(',') - 1);
+		}
+
+		try
+		{
+			Date date_final(date);
+		}
+		catch(const Date::InvalidDate& e)
+		{
+			std::cerr << "Error: bad input => " << temp.substr(0,10)<<'\n';
+			continue;
+		}
+		
+		Date date_final(date);
+		float bitcoin_value;
+		float quantity;
+		try
+		{
+			bitcoin_value = this->get_db_value(date_final);
+		}
+		catch(const BitcoinExchange::DateBeforeBitcoinInception& e)
+		{
+			std::cerr << "Error: Bitcoin did not exist yet\n";
+		}
+		quantity = atof(float_num.c_str());
+
+		if (quantity < 0)
+		{
+			std::cerr << "Error: not a positive number." << std::endl;
+			continue;
+		}
+		else if (quantity > 1000)
+		{
+			std::cerr << "Error: too large a number." << std::endl;
+			continue;
+		}
+		
+		std::cout << temp << " = " << quantity*bitcoin_value<< std::endl;
+	}
+	return;
 }
-
-std::ifstream	BitcoinExchange::process_input_file(char *filename)
-{
-	
-}
-
-
-
 
 	// Overloaded Operator
 BitcoinExchange&		BitcoinExchange::operator=(const BitcoinExchange& other)
@@ -243,6 +312,17 @@ BitcoinExchange&		BitcoinExchange::operator=(const BitcoinExchange& other)
 	 			this <<
 			std::endl;
 	return *this;
+}
+
+void BitcoinExchange::print_all() const {
+    std::map<Date, float>::const_iterator it;
+    for (it = this->database.begin(); it != this->database.end(); ++it) {
+        Date d = it->first;
+        std::cout << d.getYear() << "-" 
+                  << std::setw(2) << std::setfill('0') << d.getMonth() << "-" 
+                  << std::setw(2) << std::setfill('0') << d.getDay() 
+                  << " => " << it->second << std::endl;
+    }
 }
 
 const char *BitcoinExchange::InvalidDataFile::what() const throw()

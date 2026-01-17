@@ -5,6 +5,7 @@
 #include <map>
 #include <algorithm>
 #include <string>
+#include <iomanip>
 
 struct Date
 {
@@ -58,8 +59,8 @@ public:
 
 	// Methods
 	float	get_db_value(const Date& target);
-	float	print_final_value(const std::string line);
-	std::ifstream	process_input_file(char *filename);
+	void	process_input_file(char *filename);
+	void print_all() const;
 
 
 	// Overloaded Operator
