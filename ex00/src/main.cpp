@@ -6,7 +6,7 @@
 /*   By: tsilveir <tsilveir@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 17:29:14 by tsilveir          #+#    #+#             */
-/*   Updated: 2026/01/16 18:43:59 by tsilveir         ###   ########.fr       */
+/*   Updated: 2026/01/17 16:43:35 by tsilveir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,16 @@
 #include "../includes/BitcoinExchange.hpp"
 
 
-int main()
+int main(int argc, char* argv[])
 {
+	if (argc != 2 )
+	{
+		std::cout << "Error: could not open file.\n";
+		return (EXIT_SUCCESS);
+	}
+
 	BitcoinExchange exchange;
+
+
+
 }

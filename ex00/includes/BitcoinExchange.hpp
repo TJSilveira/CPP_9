@@ -57,11 +57,21 @@ public:
 	// Getter
 
 	// Methods
+	float	get_db_value(const Date& target);
+	float	print_final_value(const std::string line);
+	std::ifstream	process_input_file(char *filename);
+
 
 	// Overloaded Operator
 	BitcoinExchange&		operator=(const BitcoinExchange& other);
 
 	class InvalidDataFile: public std::exception
+	{
+	public:
+		virtual const char *what() const throw();
+	};
+
+	class DateBeforeBitcoinInception: public std::exception
 	{
 	public:
 		virtual const char *what() const throw();

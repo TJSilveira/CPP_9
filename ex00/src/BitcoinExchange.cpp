@@ -204,6 +204,36 @@ BitcoinExchange::~BitcoinExchange(void)
 	return;
 }
 
+float	BitcoinExchange::get_db_value(const Date& target)
+{
+	if (this->database.upper_bound(target) == this->database.begin())
+		throw BitcoinExchange::DateBeforeBitcoinInception();
+	
+	return (this->database.upper_bound(target)->second);
+}
+
+float	BitcoinExchange::print_final_value(const std::string line)
+{
+
+	try
+	{
+		/* code */
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+	}
+	
+}
+
+std::ifstream	BitcoinExchange::process_input_file(char *filename)
+{
+	
+}
+
+
+
+
 	// Overloaded Operator
 BitcoinExchange&		BitcoinExchange::operator=(const BitcoinExchange& other)
 {
@@ -218,4 +248,9 @@ BitcoinExchange&		BitcoinExchange::operator=(const BitcoinExchange& other)
 const char *BitcoinExchange::InvalidDataFile::what() const throw()
 {
 	return ("Invalid Data File");
+}
+
+const char *BitcoinExchange::DateBeforeBitcoinInception::what() const throw()
+{
+	return ("Date before Bitcoin inception");
 }
