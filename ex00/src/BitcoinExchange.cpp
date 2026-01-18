@@ -283,7 +283,8 @@ void	BitcoinExchange::process_input_file(char *filename)
 		}
 		catch(const BitcoinExchange::DateBeforeBitcoinInception& e)
 		{
-			std::cerr << "Error: Bitcoin did not exist yet\n";
+			std::cerr << "Error: Bitcoin did not exist yet.\n";
+			continue;
 		}
 		quantity = atof(float_num.c_str());
 
