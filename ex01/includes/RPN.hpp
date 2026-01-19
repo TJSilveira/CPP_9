@@ -3,12 +3,13 @@
 #include <iostream>
 #include <fstream>
 #include <stack>
+#include <list>
 #include <limits>
 
 class RPN
 {
 private:
-	std::stack<int> nums;
+	std::stack<int, std::list<int> > nums;
 public:
 	// Constructors
 	RPN(void);
