@@ -1,77 +1,452 @@
 #include "../includes/PmergeMe.hpp"
+#include <cstddef>
+#include <iostream>
+#include <ostream>
+#include <vector>
 
-	// Constructors
-PmergeMe::PmergeMe(void){}
-PmergeMe::PmergeMe(const PmergeMe& other){*this = other;}
+// Constructors
+PmergeMe::PmergeMe(void) {}
+PmergeMe::PmergeMe(const PmergeMe &other) { *this = other; }
 
-	// Destructor
-PmergeMe::~PmergeMe(void){}
+// Destructor
+PmergeMe::~PmergeMe(void) {}
 
-	// Overloaded Operator
-PmergeMe&		PmergeMe::operator=(const PmergeMe& other)
-{
-	if (this != &other)
+// Overloaded Operator
+PmergeMe &PmergeMe::operator=(const PmergeMe &other) {
+  if (this != &other) {
+    this->_deque = other._deque;
+    this->_vec = other._vec;
+  }
+  return *this;
+}
+
+static void input_validator(char *argv) {
+  if (argv[0] == '-') {
+    throw PmergeMe::InvalidNumber();
+  }
+  long int num = strtol(argv, NULL, 10);
+  if (num == 0 && argv[0] != '0') {
+    throw PmergeMe::InvalidNumber();
+  } else if (num > static_cast<long int>(std::numeric_limits<int>::max()) ||
+             errno == ERANGE) {
+    throw PmergeMe::InvalidNumber();
+  }
+}
+
+// Function templates
+template <typename T> T &next(T it, int distance) {
+  std::advance(it, distance);
+  return (it);
+}
+
+// Methods
+
+void PmergeMe::intialize_vector(int &argc, char **argv) {
+  this->_vec.reserve(argc - 1);
+  for (int i = 1; i < argc; i++) {
+    input_validator(argv[i]);
+    this->_vec.push_back(atoi(argv[i]));
+  }
+}
+
+void PmergeMe::intialize_deque(int &argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    input_validator(argv[i]);
+    this->_deque.push_back(atoi(argv[i]));
+  }
+}
+
+PmergeMe::PmergeMe(int &argc, char *argv[]) {
+  this->intialize_vector(argc, argv);
+  this->intialize_deque(argc, argv);
+}
+
+// [VECTOR IMPLEMENTATION]
+int PmergeMe::sort_pairs_vec(int rec_depth) {
+  int elems_per_group = 1u << (rec_depth - 1);
+  int num_groups = this->_vec.size() / elems_per_group;
+
+  if (num_groups < 2)
+    return (rec_depth - 1);
+
+  for (size_t i = 0; i + 2 * elems_per_group - 1 < this->_vec.size();
+       i += 2 * elems_per_group) {
+    if (this->_vec[i + elems_per_group - 1] >
+        this->_vec[i + 2 * elems_per_group - 1]) {
+      std::swap_ranges(this->_vec.begin() + i,
+                       this->_vec.begin() + i + elems_per_group,
+                       this->_vec.begin() + i + elems_per_group);
+    }
+  }
+  return (this->sort_pairs_vec(rec_depth + 1));
+}
+
+std::vector<int> initialize_jac_sequence_vec(int max_pending) {
+  std::vector<int> vec;
+  vec.push_back(0);
+  vec.push_back(1);
+  while (vec.back() < max_pending) {
+    int next = vec[vec.size() - 1] + 2 * vec[vec.size() - 2];
+    vec.push_back(next);
+  }
+  return vec;
+}
+
+std::vector<int> initialize_pend_sequence_vec(std::vector<int> &jac_seq) {
+  std::vector<int> vec;
+	if (jac_seq.size() < 4)
 	{
-		this->_deque = other._deque;
-		this->_vec = other._vec;
+		vec.push_back(3);
+		vec.push_back(2);
+		return vec;
+	}
+	
+	for (size_t i = 3; i < jac_seq.size(); i++)
+	{
+		for (int j = 0; j < jac_seq[i] - jac_seq[i - 1]; j++)
+		{
+			vec.push_back(jac_seq[i] - j);
+		}	
 	}	
-	return *this;
+  return vec;
 }
 
-static void input_validator(char *argv)
+void		insert_group_vec(std::vector<int> &vec, std::vector<int>::iterator begin, int i, int elems_per_group)
 {
-	if (argv[0] == '-')
-	{
-		throw PmergeMe::InvalidNumber();
+	vec.insert(vec.end(),
+						begin + i * elems_per_group,
+						begin + (i + 1) * elems_per_group);
+}
+
+void PmergeMe::initialize_main_pend_vec(int rec_depth, std::vector<int> &main, std::vector<int> &pend, std::vector<int> &non_pend)
+{
+	int elems_per_group = 1u << (rec_depth - 1);
+	int num_groups = this->_vec.size() / elems_per_group;
+	std::vector<int>::iterator begin = this->_vec.begin();
+
+	for (int i = 0; i < num_groups; i++) {
+		if (i == 0) {
+			insert_group_vec(main, begin, i, elems_per_group);
+		} else if (i == 1 || (i % 2 == 1 && i + 1 < num_groups) || (i % 2 == 1 && rec_depth == 1)) {
+			insert_group_vec(main, begin, i, elems_per_group);
+		}else{
+			insert_group_vec(pend, begin, i, elems_per_group);
+		}
 	}
-	long int num = strtol(argv, NULL, 10);
-	if (num == 0 && argv[0] != '0')
+	non_pend.insert(non_pend.end(),
+						begin + (num_groups)*elems_per_group,
+						begin + this->_vec.size());
+}
+
+std::vector<int> initialize_loc_as_vec(int num_groups)
+{
+	std::vector<int> res;
+	int i = -1;
+	while (++i < num_groups)
+		res.push_back(i+1);
+
+	return (res);	
+}
+
+int		get_last_member_of_group_vec(std::vector<int> &vec, int elems_per_group, int i)
+{
+	return(vec[((i) * elems_per_group) + elems_per_group - 1]);	
+}
+
+int		get_index_binary_search_vec(std::vector<int> &main, std::vector<int> &pend, std::vector<int> &loc_as, int elems_per_group, int k_to_sort)
+{
+	int high = loc_as[k_to_sort - 1];
+	int low = 0;
+	int mid = low + (high - low)/2;
+	int item = get_last_member_of_group_vec(pend, elems_per_group, k_to_sort - 2);
+	while (low <= high)
 	{
-		throw PmergeMe::InvalidNumber();
+		mid = low + (high - low)/2;
+		if (item == get_last_member_of_group_vec(main, elems_per_group, mid))
+		{
+			return (mid + 1);
+		}
+		else if (item > get_last_member_of_group_vec(main, elems_per_group, mid))
+			low = mid +1;
+		else
+			high = mid - 1;
 	}
-	else if (num > static_cast<long int>(std::numeric_limits<int>::max()) ||
-			errno == ERANGE)
+	return low;
+}
+
+void	update_location_as_vec(std::vector<int> &loc_as, int index_to_insert)
+{
+	for (size_t i = 0; i < loc_as.size(); i++)
 	{
-		throw PmergeMe::InvalidNumber();
+		if (loc_as.at(i) >= index_to_insert)
+		{
+			loc_as.at(i)++;
+		}
 	}
 }
 
-void PmergeMe::intialize_vector(int &argc, char **argv)
+void	binary_search_insertion_vec(std::vector<int> &main, std::vector<int> &pend, std::vector<int> &loc_as, int elems_per_group, int k_to_sort)
 {
-	this->_vec.reserve(argc - 1);
-	for (int i = 1; i < argc; i++)
+	int index_to_insert = get_index_binary_search_vec(main, pend, loc_as, elems_per_group, k_to_sort);
+	// std::vector<int>::iterator begin = main.begin();
+	main.insert(main.begin() + index_to_insert * elems_per_group,
+							pend.begin() + (k_to_sort-2)*elems_per_group,
+							pend.begin() + (k_to_sort-1)*elems_per_group);
+
+	update_location_as_vec(loc_as, index_to_insert);
+}
+
+void PmergeMe::merge_insertion_sort_vec(int pair_level) {
+  (void)pair_level;
+  int rec_depth = this->sort_pairs_vec(1);
+  int max_pending = this->_vec.size() / 2 + 1;
+  std::vector<int> jac_seq = initialize_jac_sequence_vec(max_pending);
+	std::vector<int> pend_seq = initialize_pend_sequence_vec(jac_seq);
+
+  while (rec_depth > 0) {
+		int elems_per_group = 1u << (rec_depth - 1);
+		int num_groups = this->_vec.size() / elems_per_group;
+    int total_num_pend = num_groups / 2 + (num_groups % 2 == 1);
+		int remaining_num_pend = total_num_pend;
+    std::vector<int> loc_as = initialize_loc_as_vec(num_groups);
+    std::vector<int> main;
+    std::vector<int> pend;
+    std::vector<int> non_pend;
+		this->initialize_main_pend_vec(rec_depth, main, pend, non_pend);
+		
+		int i = 0;
+		while (remaining_num_pend > 1)
+		{
+			if (total_num_pend < pend_seq[i])
+			{
+				i++;
+				continue;
+			}
+			binary_search_insertion_vec(main, pend, loc_as, elems_per_group, pend_seq[i]);
+			remaining_num_pend--;
+			i++;
+		}
+		main.insert(main.end(),
+								non_pend.begin(),
+								non_pend.end());
+		this->_vec = main;
+    rec_depth--;
+  }
+	this->is_sorted_vec();
+}
+
+// [DEQUE IMPLEMENTATION]
+
+int PmergeMe::sort_pairs_deque(int rec_depth) {
+	printf("[sort_pairs_deque]\n");
+  int elems_per_group = 1u << (rec_depth - 1);
+  int num_groups = this->_deque.size() / elems_per_group;
+
+  if (num_groups < 2)
+    return (rec_depth - 1);
+
+  for (size_t i = 0; i + 2 * elems_per_group - 1 < this->_deque.size();
+       i += 2 * elems_per_group) {
+    if (this->_deque[i + elems_per_group - 1] >
+        this->_deque[i + 2 * elems_per_group - 1]) {
+      std::swap_ranges(this->_deque.begin() + i,
+                       this->_deque.begin() + i + elems_per_group,
+                       this->_deque.begin() + i + elems_per_group);
+    }
+  }
+  return (this->sort_pairs_deque(rec_depth + 1));
+}
+
+std::deque<int> initialize_jac_sequence_deque(int max_pending) {
+  std::deque<int> deque;
+  deque.push_back(0);
+  deque.push_back(1);
+  while (deque.back() < max_pending) {
+    int next = deque[deque.size() - 1] + 2 * deque[deque.size() - 2];
+    deque.push_back(next);
+  }
+  return deque;
+}
+
+std::deque<int> initialize_pend_sequence_deque(std::deque<int> &jac_seq) {
+  std::deque<int> deque;
+	if (jac_seq.size() < 4)
 	{
-		input_validator(argv[i]);
-		this->_vec.push_back(atoi(argv[i]));
+		deque.push_back(3);
+		deque.push_back(2);
+		return deque;
 	}
-}
-
-void PmergeMe::intialize_deque(int &argc, char **argv)
-{
-	for (int i = 1; i < argc; i++)
+	
+	for (size_t i = 3; i < jac_seq.size(); i++)
 	{
-		input_validator(argv[i]);
-		this->_deque.push_back(atoi(argv[i]));
+		for (int j = 0; j < jac_seq[i] - jac_seq[i - 1]; j++)
+		{
+			deque.push_back(jac_seq[i] - j);
+		}	
+	}	
+  return deque;
+}
+
+void		insert_group_deque(std::deque<int> &deque, std::deque<int>::iterator begin, int i, int elems_per_group)
+{
+	deque.insert(deque.end(),
+						begin + i * elems_per_group,
+						begin + (i + 1) * elems_per_group);
+}
+
+void PmergeMe::initialize_main_pend_deque(int rec_depth, std::deque<int> &main, std::deque<int> &pend, std::deque<int> &non_pend)
+{
+	int elems_per_group = 1u << (rec_depth - 1);
+	int num_groups = this->_deque.size() / elems_per_group;
+	std::deque<int>::iterator begin = this->_deque.begin();
+
+	for (int i = 0; i < num_groups; i++) {
+		if (i == 0) {
+			insert_group_deque(main, begin, i, elems_per_group);
+		} else if (i == 1 || (i % 2 == 1 && i + 1 < num_groups) || (i % 2 == 1 && rec_depth == 1)) {
+			insert_group_deque(main, begin, i, elems_per_group);
+		}else{
+			insert_group_deque(pend, begin, i, elems_per_group);
+		}
+	}
+	
+	non_pend.insert(non_pend.end(),
+						begin + (num_groups)*elems_per_group,
+						begin + this->_deque.size());
+}
+
+std::deque<int> initialize_loc_as_deque(int num_groups)
+{
+	std::deque<int> res;
+	int i = -1;
+	while (++i < num_groups)
+		res.push_back(i+1);
+
+	return (res);	
+}
+
+int		get_last_member_of_group_deque(std::deque<int> &deque, int elems_per_group, int i)
+{
+	return(deque[((i) * elems_per_group) + elems_per_group - 1]);	
+}
+
+int		get_index_binary_search_deque(std::deque<int> &main, std::deque<int> &pend, std::deque<int> &loc_as, int elems_per_group, int k_to_sort)
+{
+	int high = loc_as[k_to_sort - 1];
+	int low = 0;
+	int mid = low + (high - low)/2;
+	int item = get_last_member_of_group_deque(pend, elems_per_group, k_to_sort - 2);
+	while (low <= high)
+	{
+		mid = low + (high - low)/2;
+		if (item == get_last_member_of_group_deque(main, elems_per_group, mid))
+		{
+			return (mid + 1);
+		}
+		else if (item > get_last_member_of_group_deque(main, elems_per_group, mid))
+			low = mid +1;
+		else
+			high = mid - 1;
+	}
+	return low;
+}
+
+void	update_location_as_deque(std::deque<int> &loc_as, int index_to_insert)
+{
+	for (size_t i = 0; i < loc_as.size(); i++)
+	{
+		if (loc_as.at(i) >= index_to_insert)
+		{
+			loc_as.at(i)++;
+		}
 	}
 }
 
-PmergeMe::PmergeMe(int &argc, char *argv[])
+void	binary_search_insertion_deque(std::deque<int> &main, std::deque<int> &pend, std::deque<int> &loc_as, int elems_per_group, int k_to_sort)
 {
-	this->intialize_vector(argc, argv);
-	this->intialize_deque(argc, argv);	
+	int index_to_insert = get_index_binary_search_deque(main, pend, loc_as, elems_per_group, k_to_sort);
+	// std::deque<int>::iterator begin = main.begin();
+	main.insert(main.begin() + index_to_insert * elems_per_group,
+							pend.begin() + (k_to_sort-2)*elems_per_group,
+							pend.begin() + (k_to_sort-1)*elems_per_group);
+
+	update_location_as_deque(loc_as, index_to_insert);
 }
 
-const char *PmergeMe::MissingInput::what() const throw()
-{
-	return ("Missing Input");
+void PmergeMe::merge_insertion_sort_deque(int pair_level) {
+  (void)pair_level;
+	printf("In merge_insertion_sort_deque function\n");
+  int rec_depth = this->sort_pairs_deque(1);
+  int max_pending = this->_deque.size() / 2 + 1;
+  std::deque<int> jac_seq = initialize_jac_sequence_deque(max_pending);
+	std::deque<int> pend_seq = initialize_pend_sequence_deque(jac_seq);
+
+  while (rec_depth > 0) {
+		int elems_per_group = 1u << (rec_depth - 1);
+		int num_groups = this->_deque.size() / elems_per_group;
+    int total_num_pend = num_groups / 2 + (num_groups % 2 == 1);
+		int remaining_num_pend = total_num_pend;
+    std::deque<int> loc_as = initialize_loc_as_deque(num_groups);
+    std::deque<int> main;
+    std::deque<int> pend;
+    std::deque<int> non_pend;
+		this->initialize_main_pend_deque(rec_depth, main, pend, non_pend);
+
+		std::cout << "==[Start of k]==" << std::endl;
+		int i = 0;
+		while (remaining_num_pend > 1)
+		{
+			if (total_num_pend < pend_seq[i])
+			{
+				i++;
+				continue;
+			}
+			binary_search_insertion_deque(main, pend, loc_as, elems_per_group, pend_seq[i]);
+			std::cout << "[" << i <<"]: " <<pend_seq[i] <<std::endl;
+			remaining_num_pend--;
+			i++;
+		}
+		main.insert(main.end(),
+								non_pend.begin(),
+								non_pend.end());
+		this->_deque = main;
+    rec_depth--;
+  }
+	this->is_sorted_deque();
 }
 
-const char *PmergeMe::InvalidNumber::what() const throw()
+// [Shared]
+
+void PmergeMe::is_sorted_vec()
 {
-	return ("Invalid Expression");
+	for (size_t i = 1; i < this->_vec.size(); i++)
+	{
+		if (this->_vec.at(i) < this->_vec.at(i - 1))
+		{
+			throw NotSorted();
+		}
+	}
 }
 
-const char *PmergeMe::IntegerOverflow::what() const throw()
+void PmergeMe::is_sorted_deque()
 {
-	return ("Integer Overflow");
+	for (size_t i = 1; i < this->_deque.size(); i++)
+	{
+		if (this->_deque.at(i) < this->_deque.at(i - 1))
+		{
+			throw NotSorted();
+		}
+	}
+}
+
+const char *PmergeMe::MissingInput::what() const throw() {
+  return ("Missing Input");
+}
+
+const char *PmergeMe::InvalidNumber::what() const throw() {
+  return ("Invalid Expression");
+}
+
+const char *PmergeMe::NotSorted::what() const throw() {
+  return ("Not Sorted");
 }
