@@ -1,6 +1,7 @@
 #ifndef PMERGEME_HPP
 #define PMERGEME_HPP
 #include <iostream>
+#include <ostream>
 #include <fstream>
 #include <vector>
 #include <deque>
@@ -8,7 +9,10 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstddef>
-
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <cstddef>
 
 class PmergeMe
 {
@@ -31,11 +35,11 @@ public:
 	// Methods
 	void intialize_vector(int &argc, char **argv);
 	void intialize_deque(int &argc, char **argv);
-	void merge_insertion_sort_vec(int pair_level);
+	void merge_insertion_sort_vec();
 	int	sort_pairs_vec(int rec_depth);
 	void initialize_main_pend_vec(int rec_depth, std::vector<int> &main, std::vector<int> &pend, std::vector<int> &non_pend);
 
-	void merge_insertion_sort_deque(int pair_level);
+	void merge_insertion_sort_deque();
 	int sort_pairs_deque(int rec_depth);
 	void initialize_main_pend_deque(int rec_depth, std::deque<int> &main, std::deque<int> &pend, std::deque<int> &non_pend);
 

@@ -1,8 +1,58 @@
 #include "../includes/PmergeMe.hpp"
-#include <cstddef>
-#include <iostream>
-#include <ostream>
-#include <vector>
+
+template <typename T>
+std::string to_string(const T& value) {
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
+}
+
+// void print_vec(std::vector<int> &vec, std::string str)
+// {
+// 	printf("[%s]\n", str.c_str());
+// 	for (size_t i = 0; i < vec.size(); i++)
+// 	{
+// 		printf("[%li] This is %s: %i\n", i, str.c_str(), vec.at(i));
+// 	}
+// 	fflush(stdout);	
+// }
+
+std::string argv_to_str(int argc, char* argv[])
+{
+	int i = 0;
+	std::string str;
+
+	while (argv[++i])
+	{
+		if (i == 5  && argc > 6)
+		{
+			str.append("[...]");
+			break;
+		}
+		str.append(argv[i]);
+		str.append(" ");
+	}	
+	return str;
+}
+
+std::string vec_to_str(std::vector<int> &vec)
+{
+	int i = -1;
+	int size = vec.size();
+	std::string str;
+
+	while (++i < size)
+	{
+		if (i == 4  && size > 5)
+		{
+			str.append("[...]");
+			break;
+		}
+		str.append(to_string(vec.at(i)));
+		str.append(" ");
+	}	
+	return str;
+}
 
 // Constructors
 PmergeMe::PmergeMe(void) {}
@@ -57,8 +107,27 @@ void PmergeMe::intialize_deque(int &argc, char **argv) {
 }
 
 PmergeMe::PmergeMe(int &argc, char *argv[]) {
+	clock_t start_vec = clock();
   this->intialize_vector(argc, argv);
+	this->merge_insertion_sort_vec();
+	clock_t end_vec = clock();
+	double time_elapsed_vec = static_cast<double>(end_vec - start_vec) / CLOCKS_PER_SEC;
+
+	clock_t start_deque = clock();
   this->intialize_deque(argc, argv);
+	this->merge_insertion_sort_deque();
+	clock_t end_deque = clock();
+	double time_elapsed_deque = static_cast<double>(end_deque - start_deque) / CLOCKS_PER_SEC;
+
+	std::cout << "\033[31mBefore\033[00m: " << argv_to_str(argc, argv) << "\n";
+	std::cout << "\033[32mAfter\033[00m:  " << vec_to_str(this->_vec) << "\n";
+	std::cout << "Time to process a range of " << this->_vec.size()
+						<< " elements with std::vector: " << std::fixed << std::setprecision(6)
+						<< time_elapsed_vec << "s\n";
+	std::cout << "Time to process a range of " << this->_deque.size()
+						<< " elements with std::deque:  " << std::fixed << std::setprecision(6)
+						<< time_elapsed_deque << "s\n";
+
 }
 
 // [VECTOR IMPLEMENTATION]
@@ -127,7 +196,7 @@ void PmergeMe::initialize_main_pend_vec(int rec_depth, std::vector<int> &main, s
 	for (int i = 0; i < num_groups; i++) {
 		if (i == 0) {
 			insert_group_vec(main, begin, i, elems_per_group);
-		} else if (i == 1 || (i % 2 == 1 && i + 1 < num_groups) || (i % 2 == 1 && rec_depth == 1)) {
+		} else if (i == 1 || (i % 2 == 1 && i + 1 <= num_groups) || (i % 2 == 1 && rec_depth == 1)) {
 			insert_group_vec(main, begin, i, elems_per_group);
 		}else{
 			insert_group_vec(pend, begin, i, elems_per_group);
@@ -156,6 +225,10 @@ int		get_last_member_of_group_vec(std::vector<int> &vec, int elems_per_group, in
 int		get_index_binary_search_vec(std::vector<int> &main, std::vector<int> &pend, std::vector<int> &loc_as, int elems_per_group, int k_to_sort)
 {
 	int high = loc_as[k_to_sort - 1];
+	int current_n = main.size()/elems_per_group;
+	if (high >= current_n)
+		high = current_n - 1;
+
 	int low = 0;
 	int mid = low + (high - low)/2;
 	int item = get_last_member_of_group_vec(pend, elems_per_group, k_to_sort - 2);
@@ -188,7 +261,6 @@ void	update_location_as_vec(std::vector<int> &loc_as, int index_to_insert)
 void	binary_search_insertion_vec(std::vector<int> &main, std::vector<int> &pend, std::vector<int> &loc_as, int elems_per_group, int k_to_sort)
 {
 	int index_to_insert = get_index_binary_search_vec(main, pend, loc_as, elems_per_group, k_to_sort);
-	// std::vector<int>::iterator begin = main.begin();
 	main.insert(main.begin() + index_to_insert * elems_per_group,
 							pend.begin() + (k_to_sort-2)*elems_per_group,
 							pend.begin() + (k_to_sort-1)*elems_per_group);
@@ -196,8 +268,7 @@ void	binary_search_insertion_vec(std::vector<int> &main, std::vector<int> &pend,
 	update_location_as_vec(loc_as, index_to_insert);
 }
 
-void PmergeMe::merge_insertion_sort_vec(int pair_level) {
-  (void)pair_level;
+void PmergeMe::merge_insertion_sort_vec() {
   int rec_depth = this->sort_pairs_vec(1);
   int max_pending = this->_vec.size() / 2 + 1;
   std::vector<int> jac_seq = initialize_jac_sequence_vec(max_pending);
@@ -208,12 +279,13 @@ void PmergeMe::merge_insertion_sort_vec(int pair_level) {
 		int num_groups = this->_vec.size() / elems_per_group;
     int total_num_pend = num_groups / 2 + (num_groups % 2 == 1);
 		int remaining_num_pend = total_num_pend;
+
     std::vector<int> loc_as = initialize_loc_as_vec(num_groups);
     std::vector<int> main;
     std::vector<int> pend;
     std::vector<int> non_pend;
 		this->initialize_main_pend_vec(rec_depth, main, pend, non_pend);
-		
+
 		int i = 0;
 		while (remaining_num_pend > 1)
 		{
@@ -230,6 +302,7 @@ void PmergeMe::merge_insertion_sort_vec(int pair_level) {
 								non_pend.begin(),
 								non_pend.end());
 		this->_vec = main;
+		main.size();
     rec_depth--;
   }
 	this->is_sorted_vec();
@@ -238,7 +311,6 @@ void PmergeMe::merge_insertion_sort_vec(int pair_level) {
 // [DEQUE IMPLEMENTATION]
 
 int PmergeMe::sort_pairs_deque(int rec_depth) {
-	printf("[sort_pairs_deque]\n");
   int elems_per_group = 1u << (rec_depth - 1);
   int num_groups = this->_deque.size() / elems_per_group;
 
@@ -303,7 +375,7 @@ void PmergeMe::initialize_main_pend_deque(int rec_depth, std::deque<int> &main, 
 	for (int i = 0; i < num_groups; i++) {
 		if (i == 0) {
 			insert_group_deque(main, begin, i, elems_per_group);
-		} else if (i == 1 || (i % 2 == 1 && i + 1 < num_groups) || (i % 2 == 1 && rec_depth == 1)) {
+		} else if (i == 1 || (i % 2 == 1 && i + 1 <= num_groups) || (i % 2 == 1 && rec_depth == 1)) {
 			insert_group_deque(main, begin, i, elems_per_group);
 		}else{
 			insert_group_deque(pend, begin, i, elems_per_group);
@@ -333,6 +405,9 @@ int		get_last_member_of_group_deque(std::deque<int> &deque, int elems_per_group,
 int		get_index_binary_search_deque(std::deque<int> &main, std::deque<int> &pend, std::deque<int> &loc_as, int elems_per_group, int k_to_sort)
 {
 	int high = loc_as[k_to_sort - 1];
+	int current_n = main.size()/elems_per_group;
+	if (high >= current_n)
+		high = current_n - 1;
 	int low = 0;
 	int mid = low + (high - low)/2;
 	int item = get_last_member_of_group_deque(pend, elems_per_group, k_to_sort - 2);
@@ -373,9 +448,7 @@ void	binary_search_insertion_deque(std::deque<int> &main, std::deque<int> &pend,
 	update_location_as_deque(loc_as, index_to_insert);
 }
 
-void PmergeMe::merge_insertion_sort_deque(int pair_level) {
-  (void)pair_level;
-	printf("In merge_insertion_sort_deque function\n");
+void PmergeMe::merge_insertion_sort_deque() {
   int rec_depth = this->sort_pairs_deque(1);
   int max_pending = this->_deque.size() / 2 + 1;
   std::deque<int> jac_seq = initialize_jac_sequence_deque(max_pending);
@@ -392,7 +465,6 @@ void PmergeMe::merge_insertion_sort_deque(int pair_level) {
     std::deque<int> non_pend;
 		this->initialize_main_pend_deque(rec_depth, main, pend, non_pend);
 
-		std::cout << "==[Start of k]==" << std::endl;
 		int i = 0;
 		while (remaining_num_pend > 1)
 		{
@@ -402,7 +474,6 @@ void PmergeMe::merge_insertion_sort_deque(int pair_level) {
 				continue;
 			}
 			binary_search_insertion_deque(main, pend, loc_as, elems_per_group, pend_seq[i]);
-			std::cout << "[" << i <<"]: " <<pend_seq[i] <<std::endl;
 			remaining_num_pend--;
 			i++;
 		}
