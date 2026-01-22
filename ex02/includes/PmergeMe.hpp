@@ -35,18 +35,19 @@ public:
 	// Methods
 	void intialize_vector(int &argc, char **argv);
 	void intialize_deque(int &argc, char **argv);
+
 	void merge_insertion_sort_vec();
 	int	sort_pairs_vec(int rec_depth);
 	void initialize_main_pend_vec(int rec_depth, std::vector<int> &main, std::vector<int> &pend, std::vector<int> &non_pend);
+	void binary_sort_vec(int rec_depth, std::vector<int> pend_seq);
 
 	void merge_insertion_sort_deque();
 	int sort_pairs_deque(int rec_depth);
 	void initialize_main_pend_deque(int rec_depth, std::deque<int> &main, std::deque<int> &pend, std::deque<int> &non_pend);
+	void binary_sort_deque(int rec_depth, std::deque<int> pend_seq);
 
 	void is_sorted_vec();
 	void is_sorted_deque();
-
-
 
 	// Overloaded Operator
 	PmergeMe&		operator=(const PmergeMe& other);
