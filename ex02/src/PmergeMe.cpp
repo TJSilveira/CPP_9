@@ -101,13 +101,14 @@ PmergeMe::PmergeMe(int &argc, char *argv[])
 	this->intialize_vector(argc, argv);
 	this->merge_insertion_sort_vec();
 	end_vec = clock();
-	time_elapsed_vec = static_cast<double>(end_vec - start_vec)
-		/ CLOCKS_PER_SEC;
+	time_elapsed_vec = static_cast<double>(end_vec - start_vec) / CLOCKS_PER_SEC;
+
 	start_deque = clock();
 	this->intialize_deque(argc, argv);
 	this->merge_insertion_sort_deque();
 	end_deque = clock();
 	time_elapsed_deque = static_cast<double>(end_deque - start_deque) / CLOCKS_PER_SEC;
+
 	std::cout << "\033[31mBefore\033[00m: " << argv_to_str(argc, argv) << "\n";
 	std::cout << "\033[32mAfter\033[00m:  " << vec_to_str(this->_vec) << "\n";
 	std::cout << "Time to process a range of " << this->_vec.size() << " elements with std::vector: " << std::fixed << std::setprecision(6) << time_elapsed_vec << "s\n";
@@ -158,7 +159,27 @@ void PmergeMe::intialize_deque(int &argc, char **argv)
 	}
 }
 
+void PmergeMe::is_sorted_vec()
+{
+	for (size_t i = 1; i < this->_vec.size(); i++)
+	{
+		if (this->_vec.at(i) < this->_vec.at(i - 1))
+		{
+			throw NotSorted();
+		}
+	}
+}
 
+void PmergeMe::is_sorted_deque()
+{
+	for (size_t i = 1; i < this->_deque.size(); i++)
+	{
+		if (this->_deque.at(i) < this->_deque.at(i - 1))
+		{
+			throw NotSorted();
+		}
+	}
+}
 
 // [VECTOR IMPLEMENTATION]
 int PmergeMe::sort_pairs_vec(int rec_depth)
@@ -356,7 +377,6 @@ void PmergeMe::binary_sort_vec(int rec_depth, std::vector<int> pend_seq)
 	}
 	main.insert(main.end(), non_pend.begin(), non_pend.end());
 	this->_vec = main;
-	main.size();
 }
 
 void PmergeMe::merge_insertion_sort_vec()
@@ -601,27 +621,6 @@ void PmergeMe::merge_insertion_sort_deque()
 	this->is_sorted_deque();
 }
 
-void PmergeMe::is_sorted_vec()
-{
-	for (size_t i = 1; i < this->_vec.size(); i++)
-	{
-		if (this->_vec.at(i) < this->_vec.at(i - 1))
-		{
-			throw NotSorted();
-		}
-	}
-}
-
-void PmergeMe::is_sorted_deque()
-{
-	for (size_t i = 1; i < this->_deque.size(); i++)
-	{
-		if (this->_deque.at(i) < this->_deque.at(i - 1))
-		{
-			throw NotSorted();
-		}
-	}
-}
 
 const char *PmergeMe::MissingInput::what() const throw()
 {
