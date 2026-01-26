@@ -7,7 +7,7 @@
 #include <string>
 #include <iomanip>
 
-struct Date
+class Date
 {
 	private:
 		int	year;
@@ -23,9 +23,9 @@ struct Date
 	~Date(void);
 
 	// Getter
-	int getYear();
-	int getMonth();
-	int getDay();
+	int getYear() const;
+	int getMonth() const;
+	int getDay() const;
 
 	// Methods
 	
@@ -42,6 +42,7 @@ struct Date
 	};
 };
 
+std::ostream&	operator<<(std::ostream& os, const Date& obj);
 
 class BitcoinExchange
 {
@@ -73,6 +74,12 @@ public:
 	};
 
 	class DateBeforeBitcoinInception: public std::exception
+	{
+	public:
+		virtual const char *what() const throw();
+	};
+
+	class InvalidFloat: public std::exception
 	{
 	public:
 		virtual const char *what() const throw();

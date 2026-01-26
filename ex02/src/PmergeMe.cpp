@@ -62,18 +62,23 @@ static std::string vec_to_str(std::vector<int> &vec)
 static void	input_validator(char *argv)
 {
 	long int	num;
+	char		*endptr;
 
 	if (argv[0] == '-')
 	{
 		throw PmergeMe::InvalidNumber();
 	}
-	num = strtol(argv, NULL, 10);
+	num = strtol(argv, &endptr, 10);
 	if (num == 0 && argv[0] != '0')
 	{
 		throw PmergeMe::InvalidNumber();
 	}
 	else if (num > static_cast<long int>(std::numeric_limits<int>::max())
 		|| errno == ERANGE)
+	{
+		throw PmergeMe::InvalidNumber();
+	}
+	else if(*endptr != 0)
 	{
 		throw PmergeMe::InvalidNumber();
 	}

@@ -1,5 +1,22 @@
 #include "../includes/BitcoinExchange.hpp"
 
+// Utils
+bool	is_valid_float(std::string str){
+	if (str.empty())
+		return false;
+
+	if (str.find(' ') != std::string::npos)
+		return false;
+	
+	char *endptr;
+	std::strtof(str.c_str(),&endptr);
+
+	if (*endptr != 0)
+		return false;
+	return true;
+}
+
+
 static bool is_leap_year(int &year);
 static bool is_valid_date(const std::string &date_str);
 static bool is_valid_day(int &year, int &month, int &day);
@@ -59,17 +76,17 @@ Date&		Date::operator=(const Date& other)
 }
 
 // Getters
-int Date::getYear()
+int Date::getYear() const
 {
 	return(this->year);
 }
 
-int Date::getMonth()
+int Date::getMonth() const
 {
 	return(this->month);
 }
 
-int Date::getDay()
+int Date::getDay() const
 {
 	return(this->day);
 }
@@ -147,6 +164,13 @@ bool		Date::operator<(const Date& other) const
 		return (this->day < other.day);
 }
 
+std::ostream&	operator<<(std::ostream& os, const Date& obj)
+{
+	os << obj.getYear() << "-" <<
+		std::setfill('0') << std::setw(2) << obj.getMonth() << "-" <<
+		std::setfill('0') << std::setw(2) << obj.getDay();
+	return(os);
+}
 
 const char *Date::InvalidDate::what() const throw()
 {
@@ -155,6 +179,58 @@ const char *Date::InvalidDate::what() const throw()
 
 
 // ======================================= BitcoinExchange =======================================
+
+// Utils
+struct ParseResult {
+    bool valid;
+    Date date;
+    float quantity;
+    std::string error_msg;
+};
+
+ParseResult parse_line(const std::string& line) {
+	ParseResult result = {false, Date(), 0.0f, ""};
+	
+	if (line.size() < 14) {
+		result.error_msg = "Line too short";
+		return result;
+	}
+	
+	if (line.find('|') == std::string::npos) {
+		result.error_msg = "Line not formatted correctly";
+		return result;
+	}
+	
+	std::string date_str = line.substr(0, line.find('|') - 1);
+	std::string float_str = line.substr(line.find('|') + 2);
+	
+	try {
+		result.date = Date(date_str);
+	} catch(const Date::InvalidDate&) {
+		result.error_msg = "bad input => " + date_str;
+		return result;
+	}
+	
+	if (!is_valid_float(float_str)) {
+		result.error_msg = "invalid float => " + line;
+		return result;
+	}
+	
+	result.quantity = atof(float_str.c_str());
+	
+	if (result.quantity < 0) {
+		result.error_msg = "not a positive number.";
+		return result;
+	}
+	
+	if (result.quantity > 1000) {
+		result.error_msg = "too large a number.";
+		return result;
+	}
+	
+	result.valid = true;
+	return result;
+}
 
 	// Constructors
 BitcoinExchange::BitcoinExchange(void)
@@ -170,7 +246,7 @@ BitcoinExchange::BitcoinExchange(void)
 
 	std::string temp;
 	std::string date;
-	std::string float_num;
+	std::string float_str;
 	float num;
 
 	std::getline(in_file, temp);
@@ -184,9 +260,12 @@ BitcoinExchange::BitcoinExchange(void)
 		else
 		{
 			date = temp.substr(0, temp.find(','));
-			float_num = temp.substr(temp.find(',')+1, temp.size() - temp.find(',')-1);
+			float_str = temp.substr(temp.find(',')+1, temp.size() - temp.find(',')-1);
 		}
-		num = static_cast<float>(atof(float_num.c_str()));
+		if (is_valid_float(float_str) == false)
+			throw BitcoinExchange::InvalidDataFile();
+		
+		num = static_cast<float>(atof(float_str.c_str()));
 		this->database.insert(std::make_pair(Date(date), num));
 	}
 	return;
@@ -227,79 +306,41 @@ void	BitcoinExchange::process_input_file(char *filename)
 		return;
 	}
 
-	std::string temp;
-	std::string date;
-	std::string float_num;
+	std::string header;
 
-	std::getline(in_file, temp);
-	if(temp.compare("date | value") != 0)
+	std::getline(in_file, header);
+	if(header.compare("date | value") != 0)
 	{
 		std::cerr << "Error: No header in file" << std::endl;
-		return;	
+		return;
 	}
 
-	while (std::getline(in_file, temp))
+	std::string line;
+	std::string date;
+	std::string float_str;
+
+	while (std::getline(in_file, line))
 	{
-		if (temp.size() >= 10)
+		ParseResult parsed = parse_line(line);
+
+		if (!parsed.valid)
 		{
-			try
-			{
-				Date date(temp.substr(0,10));
-			}
-			catch(const Date::InvalidDate& e)
-			{
-				std::cerr << "Error: bad input => " << temp.substr(0,10)<<'\n';
-				continue;
-			}
-		}
-		
-		if (temp.find('|') == std::string::npos)
-		{
-			std::cerr << "Error: Line not formatted correctly" << std::endl;
+			std::cerr << "Error: " << parsed.error_msg <<'\n';
 			continue;
-		}
-		else
-		{
-			date = temp.substr(0, temp.find('|') - 1);
-			float_num = temp.substr(temp.find('|') + 2, temp.size() - temp.find(',') - 1);
 		}
 
 		try
 		{
-			Date date_final(date);
-		}
-		catch(const Date::InvalidDate& e)
-		{
-			std::cerr << "Error: bad input => " << temp.substr(0,10)<<'\n';
-			continue;
-		}
-		
-		Date date_final(date);
-		float bitcoin_value;
-		float quantity;
-		try
-		{
-			bitcoin_value = this->get_db_value(date_final);
+			float bitcoin_value = this->get_db_value(parsed.date);
+			std::cout << parsed.date << " | " <<  
+					parsed.quantity << " = " << parsed.quantity * bitcoin_value<< std::endl;
+
 		}
 		catch(const BitcoinExchange::DateBeforeBitcoinInception& e)
 		{
 			std::cerr << "Error: Bitcoin did not exist yet.\n";
 			continue;
 		}
-		quantity = atof(float_num.c_str());
-
-		if (quantity < 0)
-		{
-			std::cerr << "Error: not a positive number." << std::endl;
-			continue;
-		}
-		else if (quantity > 1000)
-		{
-			std::cerr << "Error: too large a number." << std::endl;
-			continue;
-		}
-		
-		std::cout << temp << " = " << quantity*bitcoin_value<< std::endl;
 	}
 	return;
 }
